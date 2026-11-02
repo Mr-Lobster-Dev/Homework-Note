@@ -84,6 +84,13 @@ input,textarea{font:inherit;color:inherit}
 .list-btn{grid-column:1/-1;background:var(--card);color:var(--label);justify-content:flex-start;padding:0 16px}
 .list-btn svg{color:var(--tint)}
 .list-btn .count{margin-left:auto;min-width:28px;height:28px;padding:0 9px;border-radius:14px;background:var(--tint);color:#fff;font-size:15px;font-weight:700;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.title-row{display:flex;align-items:center;gap:12px;margin:0 4px 14px}
+.title-row .large-title{margin:0;flex:1}
+.acct{width:38px;height:38px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:var(--card);color:var(--tint);flex:none;font-weight:600;font-size:16px;transition:transform .15s}
+.acct:active{transform:scale(.92)}
+.acct img{width:100%;height:100%;object-fit:cover;display:block}
+.acct svg{width:24px;height:24px}
+.foot button{color:var(--tint);font-weight:500}
 .foot{font-size:13px;color:var(--label2);text-align:center;margin:14px 0 0}
 
 /* ---------- Layers & sheets ---------- */
@@ -232,6 +239,29 @@ input,textarea{font:inherit;color:inherit}
 .done-toggle .chev{width:12px;height:12px;transition:transform .3s var(--spring)}
 .done-toggle[aria-expanded=true] .chev{transform:rotate(90deg)}
 
+/* ---------- Account ---------- */
+.sheet.acct-sheet{max-height:calc(100% - var(--st) - 40px)}
+.acct-intro{text-align:center;padding:14px 16px 6px}
+.acct-intro .big-ico{width:56px;height:56px;border-radius:16px;background:color-mix(in srgb,var(--tint) 14%,transparent);color:var(--tint);display:grid;place-items:center;margin:0 auto 12px}
+.acct-intro .big-ico svg{width:30px;height:30px}
+.acct-intro h3{margin:0 0 6px;font-size:20px;font-weight:600}
+.acct-intro p{margin:0 auto;font-size:15px;color:var(--label2);max-width:34ch;line-height:1.4}
+.g-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:48px;margin-top:20px;border-radius:999px;background:#fff;color:#1F1F1F;border:1px solid #747775;font-size:16px;font-weight:500;transition:background .15s,transform .12s}
+.g-btn:active{background:#f1f3f4;transform:scale(.98)}
+.g-btn:disabled{opacity:.6;cursor:default}
+.g-btn svg{width:20px;height:20px;flex:none}
+@media (prefers-color-scheme: dark){.g-btn{background:#131314;color:#E3E3E3;border-color:#8E918F}.g-btn:active{background:#1f1f20}}
+.acct-err{color:var(--red);font-size:14px;text-align:center;margin:12px 4px 0}
+.profile{display:flex;align-items:center;gap:14px;padding:6px 4px 18px}
+.profile .av{width:56px;height:56px;border-radius:50%;background:var(--tint);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:600;overflow:hidden;flex:none}
+.profile .av img{width:100%;height:100%;object-fit:cover}
+.profile b{display:block;font-size:20px;font-weight:600}
+.profile span{font-size:15px;color:var(--label2);overflow-wrap:anywhere}
+.cell .val{margin-left:auto;color:var(--label2)}
+.cell.destructive-row{color:var(--red);justify-content:center;font-size:17px;width:100%}
+.media .missing::after{content:"On another device";position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:11px;padding:6px;color:var(--label2);line-height:1.25}
+.file.missing{opacity:.6}
+
 /* ---------- Context menu ---------- */
 .ctx .backdrop{background:rgba(0,0,0,.18);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2)}
 @media (prefers-color-scheme: dark){.ctx .backdrop{background:rgba(0,0,0,.4)}}
@@ -281,7 +311,10 @@ input,textarea{font:inherit;color:inherit}
 <body>
 <main class="app">
   <p class="today-line" id="todayLine"></p>
-  <h1 class="large-title">Homework Note</h1>
+  <div class="title-row">
+    <h1 class="large-title">Homework Note</h1>
+    <button class="acct" id="acctBtn" aria-label="Account"></button>
+  </div>
   <p class="banner" id="banner" hidden></p>
 
   <section class="cal" aria-label="Calendar">
@@ -312,6 +345,7 @@ input,textarea{font:inherit;color:inherit}
   </div>
   <p class="foot" id="foot" hidden></p>
 </main>
+<script src="firebase-config.js"></script>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -358,8 +392,10 @@ const I = {
 };
 
 /* ===================== Local storage helpers ===================== */
-const LS_LOCAL = "homework-note.local.v1";   // used when cloud storage isn't available
-const LS_CACHE = "homework-note.cache.v1";   // mirror of cloud data for instant start
+const LS_LOCAL = "homework-note.local.v1";   // items saved on this device while signed out
+const LS_CACHE = "homework-note.cache.v1";   // per-account copy of synced items, for instant start
+const LS_UID = "homework-note.uid.v1";       // the account last signed in on this device
+const cacheKey = uid => `${LS_CACHE}.${uid}`;
 const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 const lsDel = k => { try { localStorage.removeItem(k); } catch {} };
@@ -402,14 +438,16 @@ function attUrl(a) {
 async function hydrate(root) {
   for (const el of root.querySelectorAll("[data-local]")) {
     const u = await localUrl(el.dataset.local);
-    if (!u) continue;
+    if (!u) { const host = el.closest("button, a"); if (host) host.classList.add("missing"); continue; }
     if (el.tagName === "A") el.href = u; else el.src = u;
   }
 }
 
 /* ===================== State & store ===================== */
+const cloud = { state: "off", user: null, pendingUid: lsGet(LS_UID), Au: null, F: null, auth: null, db: null, unsub: null };
+
 const S = {
-  items: lsGet(LS_CACHE) || lsGet(LS_LOCAL) || [],
+  items: (cloud.pendingUid && lsGet(cacheKey(cloud.pendingUid))) || lsGet(LS_LOCAL) || [],
   y: new Date().getFullYear(),
   m: new Date().getMonth(),
   selected: null,
@@ -418,106 +456,213 @@ const S = {
 };
 
 const store = {
-  col: null, assets: null,
+  col: null,
   upsertLocal(item) {
     const i = S.items.findIndex(x => x.id === item.id);
     if (i >= 0) S.items[i] = item; else S.items.push(item);
   },
-  async write(fn) {
-    try { await fn(); }
-    catch (e) {
-      if (e && e.code === "unavailable") {
-        await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
-        try { await fn(); return; } catch (e2) { e = e2; }
-      }
+  /* Account writes don't wait for the server, so saving also works offline; they sync when back online. */
+  write(fn) {
+    Promise.resolve().then(fn).catch(e => {
       console.warn(e);
-      toast(e && e.code === "quota_exceeded" ? "Storage is full. Delete some items and try again." : "Couldn't save. Check your connection and try again.", true);
-      throw e;
-    }
+      toast(e && e.code === "resource-exhausted" ? "Your account storage is full." : "Couldn't save to your account. Check your connection.", true);
+    });
+  },
+  saveCopy() {
+    const uid = cloud.user ? cloud.user.uid : cloud.pendingUid;
+    if (uid) lsSet(cacheKey(uid), S.items); else lsSet(LS_LOCAL, S.items);
   },
   async put(item) {
     item = JSON.parse(JSON.stringify(item));
     this.upsertLocal(item);
     refresh();
-    if (this.col) { await this.write(() => this.col.doc(item.id).set(item)); lsSet(LS_CACHE, S.items); }
-    else lsSet(LS_LOCAL, S.items);
+    if (this.col) this.write(() => this.col.doc(item.id).set(item));
+    this.saveCopy();
   },
   async remove(item) {
     S.items = S.items.filter(x => x.id !== item.id);
     S.expanded.delete(item.id);
     refresh();
-    if (this.col) { await this.write(() => this.col.doc(item.id).delete()); lsSet(LS_CACHE, S.items); }
-    else lsSet(LS_LOCAL, S.items);
+    if (this.col) this.write(() => this.col.doc(item.id).delete());
+    this.saveCopy();
     for (const a of item.attachments || []) this.dropFile(a);
   },
+  /* Photos, videos and PDFs are kept on the device where they were added */
   async upload(file) {
-    if (this.assets) {
-      const r = await this.assets.upload(file);
-      return { assetId: r.id, url: r.url };
-    }
     const localId = newId();
     await idb.put(localId, file);
     localUrls[localId] = URL.createObjectURL(file);
     return { localId };
   },
-  async dropFile(a) {
-    try {
-      if (a.assetId && this.assets) await this.assets.delete(a.assetId);
-      if (a.localId) await idb.del(a.localId);
-    } catch {}
-  }
+  async dropFile(a) { try { if (a.localId) await idb.del(a.localId); } catch {} }
 };
 
-/* ===================== Boot: connect to saved storage ===================== */
+/* ===================== Account: Google sign-in + sync (Firebase) ===================== */
+const FB_VERSION = "10.14.1";
+
 async function boot() {
-  const use = n => (window.claude && typeof window.claude.use === "function") ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
-  let db = null, user = null, assets = null;
-  try { [db, user, assets] = await Promise.all([use("db"), use("user"), use("assets")]); } catch {}
-  store.assets = assets;
-  let uid = null;
-  try { uid = user ? await user.id() : null; } catch {}
-
-  if (!db || !uid) {
-    S.mode = "local";
-    S.items = lsGet(LS_LOCAL) || lsGet(LS_CACHE) || [];
-    $("#foot").textContent = "Saved in this browser only.";
-    $("#foot").hidden = false;
-    refresh();
-    return;
+  updateFoot(); updateAccountUI();
+  const cfg = window.HN_FIREBASE;
+  if (!cfg || !cfg.apiKey) return;            // sign-in not set up: everything stays on this device
+  cloud.state = "loading";
+  try {
+    const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
+    const [A, Au, F] = await Promise.all([import(base + "firebase-app.js"), import(base + "firebase-auth.js"), import(base + "firebase-firestore.js")]);
+    const app = A.initializeApp(cfg);
+    cloud.Au = Au; cloud.F = F; cloud.auth = Au.getAuth(app);
+    try { cloud.db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
+    catch { cloud.db = F.getFirestore(app); }
+    cloud.state = "ready";
+    Au.onAuthStateChanged(cloud.auth, onAuth);
+  } catch (e) {
+    console.warn(e);
+    cloud.state = "failed";
+    if (cloud.pendingUid) showBanner("You're offline. Changes you make now won't sync to your account.");
+    updateFoot(); updateAccountUI();
   }
+}
 
+function showBanner(msg) { const b = $("#banner"); if (msg) { b.textContent = msg; b.hidden = false; } else b.hidden = true; }
+
+function onAuth(user) {
+  if (cloud.unsub) { cloud.unsub(); cloud.unsub = null; }
+  cloud.user = user;
+  if (!user) {
+    cloud.pendingUid = null; lsDel(LS_UID);
+    store.col = null; S.mode = "local"; S.expanded.clear();
+    S.items = lsGet(LS_LOCAL) || [];
+    showBanner(null);
+  } else startSync(user);
+  refresh(); updateFoot(); updateAccountUI();
+}
+
+function startSync(user) {
+  const uid = user.uid, F = cloud.F;
+  cloud.pendingUid = uid; lsSet(LS_UID, uid);
   S.mode = "cloud";
-  store.col = db.collection("data/users/" + uid);
-  let settled = false, migrated = false;
-  const timer = setTimeout(() => {
-    if (settled) return;
-    const b = $("#banner");
-    b.textContent = "Your saved items haven't loaded yet. Showing the copy on this device.";
-    b.hidden = false;
-  }, 10000);
-
-  store.col.onSnapshot(snap => {
+  S.items = lsGet(cacheKey(uid)) || [];
+  const col = F.collection(cloud.db, "users", uid, "items");
+  store.col = { doc: id => ({ set: d => F.setDoc(F.doc(col, id), d), delete: () => F.deleteDoc(F.doc(col, id)) }) };
+  let merged = false;
+  const timer = setTimeout(() => showBanner("Your items haven't loaded yet. Showing the copy on this device."), 10000);
+  const unsub = F.onSnapshot(col, { includeMetadataChanges: true }, snap => {
     S.items = snap.docs.map(d => JSON.parse(JSON.stringify(d.data())));
+    lsSet(cacheKey(uid), S.items);
     if (!snap.metadata.fromCache) {
-      settled = true; clearTimeout(timer); $("#banner").hidden = true;
-      lsSet(LS_CACHE, S.items);
+      clearTimeout(timer); showBanner(null);
       const local = lsGet(LS_LOCAL);
-      if (!migrated && local && local.length) {
-        migrated = true;
-        (async () => {
-          for (const it of local) if (!S.items.some(x => x.id === it.id)) { try { await store.col.doc(it.id).set(it); } catch {} }
-          lsDel(LS_LOCAL);
-        })();
+      if (!merged && local && local.length) {          // first sign-in: bring this device's items into the account
+        merged = true;
+        const have = new Set(S.items.map(x => x.id));
+        const add = local.filter(it => !have.has(it.id));
+        Promise.all(add.map(it => F.setDoc(F.doc(col, it.id), it)))
+          .then(() => { lsDel(LS_LOCAL); if (add.length) toast(`${add.length} ${add.length === 1 ? "item" : "items"} from this device added to your account`); })
+          .catch(e => console.warn(e));
       }
     }
     refresh();
   }, err => {
-    settled = true; clearTimeout(timer);
-    const b = $("#banner");
-    b.textContent = "Saved items can't be reached right now. Reopen the app to try again.";
-    b.hidden = false;
+    clearTimeout(timer);
     console.warn(err);
+    showBanner("Your items couldn't be loaded from your account. Check that the Firestore rules in SETUP.md are published.");
   });
+  cloud.unsub = () => { clearTimeout(timer); unsub(); };
+}
+
+const initial = u => ((u.displayName || u.email || "?").trim()[0] || "?").toUpperCase();
+const G_LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+const avatarHtml = u => u.photoURL
+  ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${esc(initial(u))}'))">`
+  : esc(initial(u));
+
+function updateFoot() {
+  const f = $("#foot");
+  if (cloud.user) f.innerHTML = `Synced to ${esc(cloud.user.email || "your account")}`;
+  else if (window.HN_FIREBASE && window.HN_FIREBASE.apiKey && cloud.state !== "failed") f.innerHTML = `Saved on this device. <button data-open-acct>Sign in to sync</button>`;
+  else f.textContent = "Saved in this browser only.";
+  f.hidden = false;
+}
+
+function updateAccountUI() {
+  const b = $("#acctBtn");
+  b.innerHTML = cloud.user
+    ? avatarHtml(cloud.user)
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="10" r="3.2"/><path d="M5.8 18.6c1.4-2.4 3.6-3.6 6.2-3.6s4.8 1.2 6.2 3.6"/></svg>';
+  b.setAttribute("aria-label", cloud.user ? `Account, signed in as ${cloud.user.displayName || cloud.user.email}` : "Account, signed out");
+  if (acctSheet) acctSheet.render();
+}
+
+let acctSheet = null;
+function openAccount() {
+  if (acctSheet) return;
+  const L = makeLayer("account");
+  L.innerHTML = `<div class="backdrop"></div>
+    <div class="sheet acct-sheet" role="dialog" aria-modal="true" aria-labelledby="acctTitle">
+      <div class="sheet-top" style="cursor:default;touch-action:auto"><div><h2 id="acctTitle">Account</h2></div><button class="close" aria-label="Close">${I.x}</button></div>
+      <div class="sheet-scroll"><div class="acct-content"></div></div>
+    </div>`;
+  const content = $(".acct-content", L);
+  const info = (ico, title, text) => `<div class="acct-intro"><div class="big-ico">${ico}</div><h3>${title}</h3><p>${text}</p></div>`;
+  const cloudIco = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4.5 4.5 0 0 1-.5 9z"/></svg>';
+
+  const render = () => {
+    const u = cloud.user;
+    let h;
+    if (u) {
+      h = `<div class="profile"><span class="av">${avatarHtml(u)}</span><div><b>${esc(u.displayName || "Signed in")}</b><span>${esc(u.email || "")}</span></div></div>
+        <div class="group"><div class="cell"><span>Sync across devices</span><span class="val">On</span></div></div>
+        <p class="group-foot">Your items are saved to your account. Photos, videos and PDFs stay on the device where you added them.</p>
+        <div class="group" style="margin-top:22px"><button class="cell destructive-row" data-signout>Sign out</button></div>`;
+    } else if (cloud.state === "off") {
+      h = info(cloudIco, "Sign-in isn't set up yet", "Add your Firebase settings to firebase-config.js and redeploy. SETUP.md in the repository has the steps.");
+    } else if (cloud.state === "failed") {
+      h = info(cloudIco, "Can't reach sign-in", "Check your connection, then reload the page.");
+    } else if (cloud.state === "loading") {
+      h = `<div class="acct-intro"><div class="big-ico"><span class="spin"></span></div><p>Loading sign-in…</p></div>`;
+    } else {
+      h = info(cloudIco, "Keep your homework in sync", "Sign in to use Homework Note on your phone and your computer. Items already on this device are added to your account.")
+        + `<button class="g-btn" data-signin>${G_LOGO}Sign in with Google</button><p class="acct-err" id="acctErr" role="alert" hidden></p>`;
+    }
+    content.innerHTML = h;
+  };
+  render();
+
+  const close = () => { acctSheet = null; L.close(); };
+  L.onEscape = close;
+  acctSheet = { render, close };
+  L.addEventListener("click", async e => {
+    if (e.target.classList.contains("backdrop") || e.target.closest(".close")) return close();
+    const si = e.target.closest("[data-signin]");
+    if (si) return signIn(si);
+    if (e.target.closest("[data-signout]")) {
+      const ok = await actionSheet({ title: "Sign out?", message: "Your items stay in your account. They're removed from this device until you sign in again.", action: "Sign out" });
+      if (!ok) return;
+      try { lsDel(cacheKey(cloud.user.uid)); await cloud.Au.signOut(cloud.auth); toast("Signed out"); close(); }
+      catch (err) { console.warn(err); toast("Couldn't sign out. Try again.", true); }
+    }
+  });
+  setTimeout(() => $(".close", L).focus({ preventScroll: true }), 60);
+}
+
+async function signIn(btn) {
+  const { Au, auth } = cloud, err = $("#acctErr");
+  const say = m => { if (err) { err.textContent = m; err.hidden = !m; } };
+  say(""); btn.disabled = true;
+  const provider = new Au.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  try {
+    await Au.signInWithPopup(auth, provider);
+    toast("Signed in");
+  } catch (e) {
+    const c = (e && e.code) || "";
+    if (c === "auth/popup-blocked") { try { await Au.signInWithRedirect(auth, provider); return; } catch (e2) { console.warn(e2); } }
+    if (c !== "auth/popup-closed-by-user" && c !== "auth/cancelled-popup-request") {
+      console.warn(e);
+      say(c === "auth/unauthorized-domain" ? "This website isn't approved for sign-in yet. Add it under Authentication, Settings, Authorized domains in Firebase."
+        : c === "auth/network-request-failed" ? "Couldn't reach Google. Check your connection and try again."
+        : "Couldn't sign in. Try again.");
+    }
+  } finally { btn.disabled = false; }
 }
 
 /* ===================== Calendar ===================== */
@@ -749,6 +894,8 @@ function itemHtml(it, dayKey) {
 function handleItemClick(e) {
   const view = e.target.closest("[data-view]");
   if (view) { const it = findItem(view.closest(".item").dataset.id); const a = it && it.attachments.find(x => x.id === view.dataset.view); if (a) openViewer(a); return true; }
+  const mf = e.target.closest(".file.missing");
+  if (mf) { e.preventDefault(); toast("This file is on the device where it was added.", true); return true; }
   const done = e.target.closest("[data-done]");
   if (done) { const it = findItem(done.closest(".item").dataset.id); if (it) { const n = { ...it, done: !it.done, updatedAt: Date.now() }; store.put(n).catch(() => {}); if (n.done) toast("Marked as done"); } return true; }
   const head = e.target.closest(".item-head");
@@ -1326,6 +1473,8 @@ $("#prevBtn").onclick = () => shiftMonth(-1);
 $("#nextBtn").onclick = () => shiftMonth(1);
 $("#todayBtn").onclick = () => { const n = new Date(); shiftMonth((n.getFullYear() - S.y) * 12 + n.getMonth() - S.m); };
 $("#todoBtn").onclick = openTodo;
+$("#acctBtn").onclick = openAccount;
+$("#foot").addEventListener("click", e => { if (e.target.closest("[data-open-acct]")) openAccount(); });
 document.querySelector(".actions").addEventListener("click", e => { const b = e.target.closest("[data-add]"); if (b) openForm(b.dataset.add, null, null); });
 
 // Tap a day. Swipe the calendar left or right to change month; the grid follows your finger.

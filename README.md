@@ -18,7 +18,9 @@ A simple homework planner with a calendar home screen, styled after Apple's Huma
 
 ## Where your data is saved
 
-Everything is saved in your browser (localStorage for items, IndexedDB for attached files), so it survives reloads and restarts. It stays on that browser and device only: clearing site data, or opening the app in a different browser, starts empty.
+By default everything is saved in your browser (localStorage for items, IndexedDB for attached files), so it survives reloads and restarts, but stays on that browser and device.
+
+**Sign in with Google to sync.** Once you've followed [SETUP.md](SETUP.md) (about 10 minutes, free), the person icon at the top right signs you in with Google, and your events, tasks and to-dos follow you to every device. Photos, videos and PDFs stay on the device where you added them; links sync.
 
 ## Running locally
 
