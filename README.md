@@ -9,6 +9,9 @@ A simple homework planner with a calendar home screen, styled after Apple's Huma
 - Month calendar showing every event and task by title and color
 - **Add event:** title, color, description, assigned date, due date, and attachments (photos, videos, PDFs, links)
 - **Add task:** everything an event has, plus an instructions section and a "Mark as done" button
+- **To do list:** everything not yet marked done, grouped as Overdue, High, Medium and Low urgency, and Coming up
+- **To-dos:** like a task, but with no due date. They have an urgency level (Low, Medium or High) that rises one level every 3 days until it reaches High, unless you turn that off
+- Events and tasks can both be marked as done
 - Tap a day to see everything due or assigned that day; tap an item to expand its details
 - Touch and hold (or right-click) an item to edit or delete it
 - Light and dark mode

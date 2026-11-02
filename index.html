@@ -81,6 +81,9 @@ input,textarea{font:inherit;color:inherit}
 .big-btn:active{transform:scale(.97);filter:brightness(.92)}
 .big-btn.filled{background:var(--tint);color:#fff}
 .big-btn.tinted{background:color-mix(in srgb,var(--tint) 15%,transparent);color:var(--tint)}
+.list-btn{grid-column:1/-1;background:var(--card);color:var(--label);justify-content:flex-start;padding:0 16px}
+.list-btn svg{color:var(--tint)}
+.list-btn .count{margin-left:auto;min-width:28px;height:28px;padding:0 9px;border-radius:14px;background:var(--tint);color:#fff;font-size:15px;font-weight:700;display:grid;place-items:center;font-variant-numeric:tabular-nums}
 .foot{font-size:13px;color:var(--label2);text-align:center;margin:14px 0 0}
 
 /* ---------- Layers & sheets ---------- */
@@ -169,8 +172,8 @@ input,textarea{font:inherit;color:inherit}
 .item-head:active{background:var(--fill)}
 .item-head.pressing{transform:scale(.975);background:var(--fill)}
 .mark{--c:var(--tint);width:8px;align-self:stretch;border-radius:4px;background:var(--c);flex:none;min-height:36px}
-.item.task .mark{width:8px;background:none;border:2px solid var(--c)}
-.item.task.done .mark{background:var(--c)}
+.item.task .mark,.item.todo .mark{width:8px;background:none;border:2px solid var(--c)}
+.item.task.done .mark,.item.todo.done .mark{background:var(--c)}
 .item-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .item-title{font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item.done .item-title{text-decoration:line-through;color:var(--label2)}
@@ -207,7 +210,27 @@ input,textarea{font:inherit;color:inherit}
 .empty h3{margin:0 0 4px;color:var(--label);font-size:20px;font-weight:600}
 .empty p{margin:0;font-size:15px}
 .sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+.sheet-actions.one{grid-template-columns:1fr}
 .sheet-actions .big-btn{height:50px;font-size:16px}
+
+/* ---------- Urgency, segmented control, switch ---------- */
+.urg{--u:#30B0C7;font-size:12px;font-weight:600;line-height:18px;padding:1px 9px;border-radius:999px;flex:none;
+  background:color-mix(in srgb,var(--u) 16%,transparent);color:color-mix(in srgb,var(--u) 62%,var(--label))}
+.urg.u1{--u:#FF9500}.urg.u2{--u:#FF3B30}
+.g-urgent{color:var(--red)}
+.seg{display:flex;flex:1;background:var(--fill);border-radius:9px;padding:2px;gap:2px;margin:8px 0}
+.seg button{flex:1;height:32px;border-radius:7px;font-size:15px;font-weight:500;transition:background .2s,box-shadow .2s}
+.seg button[aria-checked=true]{background:var(--cell);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+@media (prefers-color-scheme: dark){.seg button[aria-checked=true]{background:#636366}}
+.seg button[data-urg="0"][aria-checked=true]{color:#1E8FA6}.seg button[data-urg="1"][aria-checked=true]{color:#E08600}.seg button[data-urg="2"][aria-checked=true]{color:#F0281D}
+.switch{width:51px;height:31px;border-radius:16px;background:var(--fill2);position:relative;transition:background .25s;flex:none}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.28);transition:transform .3s var(--spring)}
+.switch[aria-checked=true]{background:var(--green)}
+.switch[aria-checked=true]::after{transform:translateX(20px)}
+.rise-note{font-size:13px;color:var(--label2);margin:0}
+.done-toggle{display:flex;align-items:center;gap:6px;margin:22px 16px 7px;font-size:13px;color:var(--label2)}
+.done-toggle .chev{width:12px;height:12px;transition:transform .3s var(--spring)}
+.done-toggle[aria-expanded=true] .chev{transform:rotate(90deg)}
 
 /* ---------- Context menu ---------- */
 .ctx .backdrop{background:rgba(0,0,0,.18);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2)}
@@ -280,6 +303,11 @@ input,textarea{font:inherit;color:inherit}
     <button class="big-btn tinted" data-add="task">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l1.8 1.8L9 5M4 13.5l1.8 1.8L9 12M12.5 7h7.5M12.5 14h7.5M4.5 19.5h.01M12.5 20h7.5"/></svg>
       Add task
+    </button>
+    <button class="big-btn list-btn" id="todoBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16 9.5"/></svg>
+      To do list
+      <span class="count" id="todoCount" hidden></span>
     </button>
   </div>
   <p class="foot" id="foot" hidden></p>
@@ -569,6 +597,9 @@ function shiftMonth(n, from = 0) {
 function refresh() {
   renderCalendar();
   if (daySheet) daySheet.update();
+  if (todoSheet) todoSheet.update();
+  const n = S.items.filter(i => !i.done).length, c = $("#todoCount");
+  c.textContent = n; c.hidden = n === 0;
 }
 
 /* ===================== Layers ===================== */
@@ -634,13 +665,34 @@ function actionSheet({ title, message, action, destructive = true }) {
 /* ===================== Day sheet ===================== */
 let daySheet = null;
 
+const RISE_DAYS = 3, RISE_MS = RISE_DAYS * 86400000;
+const URG = [{ name: "Low" }, { name: "Medium" }, { name: "High" }];
+const DEFAULT_COLOR = { event: "#5856D6", task: "#FF9500", todo: "#30B0C7" };
+const typeName = it => (it.type === "task" ? "task" : it.type === "todo" ? "to-do" : "event");
+/* Urgency now = chosen level, plus one level for every RISE_DAYS since it was set, capped at High */
+function urgencyOf(it) {
+  const base = Math.min(2, Math.max(0, it.urgency | 0));
+  if (it.rise === false) return base;
+  const start = it.urgencyStart || it.createdAt || Date.now();
+  return Math.min(2, base + Math.max(0, Math.floor((Date.now() - start) / RISE_MS)));
+}
+function riseNote(it) {
+  if (it.rise === false) return "";
+  const lvl = urgencyOf(it); if (lvl >= 2) return "";
+  const start = it.urgencyStart || it.createdAt || Date.now();
+  const next = start + (Math.floor((Date.now() - start) / RISE_MS) + 1) * RISE_MS;
+  const d = Math.max(1, Math.ceil((next - Date.now()) / 86400000));
+  return `Rises to ${URG[lvl + 1].name} in ${d} ${d === 1 ? "day" : "days"}`;
+}
+
 function itemSub(it, dayKey) {
-  const kind = it.type === "task" ? "Task" : "Event";
+  const kind = cap(typeName(it));
+  if (it.type === "todo") return it.done ? `${kind}, done` : `${kind}, ${URG[urgencyOf(it)].name.toLowerCase()} urgency`;
   if (it.due === dayKey) {
-    if (it.type === "task" && it.done) return `${kind}, done`;
+    if (it.done) return `${kind}, done`;
     return it.assigned && it.assigned !== it.due ? `${kind}, assigned ${short(it.assigned)}` : kind;
   }
-  return `${kind}, due ${short(it.due)}`;
+  return `${kind}, ${it.done ? "done, " : ""}due ${short(it.due)}`;
 }
 
 function attachmentsHtml(atts) {
@@ -679,16 +731,36 @@ function itemHtml(it, dayKey) {
     <button class="item-head" data-press aria-expanded="${open}">
       <span class="mark" style="--c:${esc(it.color)}"></span>
       <span class="item-text"><span class="item-title">${esc(it.title)}</span><span class="item-sub">${esc(itemSub(it, dayKey))}</span></span>
+      ${it.type === "todo" && !it.done ? `<span class="urg u${urgencyOf(it)}">${URG[urgencyOf(it)].name}</span>` : ""}
       ${I.chev}
     </button>
     <div class="item-body"><div class="item-inner"><div class="detail">
-      <dl class="kv"><div><dt>Assigned</dt><dd>${esc(short(it.assigned))}</dd></div><div><dt>Due</dt><dd>${esc(short(it.due))}</dd></div></dl>
+      <dl class="kv"><div><dt>Assigned</dt><dd>${esc(short(it.assigned))}</dd></div>${it.type === "todo" ? `<div><dt>Urgency</dt><dd>${URG[urgencyOf(it)].name}</dd></div>` : `<div><dt>Due</dt><dd>${esc(short(it.due))}</dd></div>`}</dl>
+      ${it.type === "todo" && !it.done && riseNote(it) ? `<p class="rise-note">${esc(riseNote(it))}</p>` : ""}
       <section class="d-block"><h4>Description</h4>${desc ? `<p>${esc(desc)}</p>` : `<p class="d-empty">No description</p>`}</section>
-      ${it.type === "task" ? `<section class="d-block"><h4>Instructions</h4>${ins ? `<p>${esc(ins)}</p>` : `<p class="d-empty">No instructions</p>`}</section>` : ""}
+      ${it.type === "task" || it.type === "todo" ? `<section class="d-block"><h4>Instructions</h4>${ins ? `<p>${esc(ins)}</p>` : `<p class="d-empty">No instructions</p>`}</section>` : ""}
       ${atts.length ? `<section class="d-block"><h4>Attachments</h4>${attachmentsHtml(atts)}</section>` : ""}
-      ${it.type === "task" ? `<button class="done-btn${it.done ? " on" : ""}" data-done>${it.done ? I.checkCircle + "Done" : I.circle + "Mark as done"}</button>` : ""}
+      <button class="done-btn${it.done ? " on" : ""}" data-done>${it.done ? I.checkCircle + "Done" : I.circle + "Mark as done"}</button>
     </div></div></div>
   </div>`;
+}
+
+/* Expand/collapse an item, mark it done, or open an attachment. Shared by the day and to-do sheets. */
+function handleItemClick(e) {
+  const view = e.target.closest("[data-view]");
+  if (view) { const it = findItem(view.closest(".item").dataset.id); const a = it && it.attachments.find(x => x.id === view.dataset.view); if (a) openViewer(a); return true; }
+  const done = e.target.closest("[data-done]");
+  if (done) { const it = findItem(done.closest(".item").dataset.id); if (it) { const n = { ...it, done: !it.done, updatedAt: Date.now() }; store.put(n).catch(() => {}); if (n.done) toast("Marked as done"); } return true; }
+  const head = e.target.closest(".item-head");
+  if (head) {
+    const item = head.closest(".item"); const id = item.dataset.id;
+    const open = !item.classList.contains("open");
+    item.classList.toggle("open", open);
+    head.setAttribute("aria-expanded", open);
+    open ? S.expanded.add(id) : S.expanded.delete(id);
+    return true;
+  }
+  return false;
 }
 
 function openDay(key) {
@@ -708,8 +780,8 @@ function openDay(key) {
   const content = $(".day-content", L);
 
   const update = () => {
-    const due = S.items.filter(i => i.due === key).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-    const assigned = S.items.filter(i => i.assigned === key && i.due !== key).sort((a, b) => (a.due || "").localeCompare(b.due || ""));
+    const due = S.items.filter(i => i.type !== "todo" && i.due === key).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    const assigned = S.items.filter(i => i.type !== "todo" && i.assigned === key && i.due !== key).sort((a, b) => (a.due || "").localeCompare(b.due || ""));
     let h = "";
     if (!due.length && !assigned.length) {
       h = `<div class="empty">${I.calEmpty}<h3>Nothing on this day</h3><p>Add an event or task for ${esc(fmt(key, { month: "short", day: "numeric" }))}.</p></div>`;
@@ -734,18 +806,68 @@ function openDay(key) {
     if (e.target.classList.contains("backdrop") || e.target.closest(".close")) return close();
     const add = e.target.closest("[data-add]");
     if (add) return openForm(add.dataset.add, null, key);
-    const view = e.target.closest("[data-view]");
-    if (view) { const it = findItem(view.closest(".item").dataset.id); const a = it && it.attachments.find(x => x.id === view.dataset.view); if (a) openViewer(a); return; }
-    const done = e.target.closest("[data-done]");
-    if (done) { const it = findItem(done.closest(".item").dataset.id); if (it) { const n = { ...it, done: !it.done, updatedAt: Date.now() }; store.put(n).catch(() => {}); if (n.done) toast("Task done"); } return; }
-    const head = e.target.closest(".item-head");
-    if (head) {
-      const item = head.closest(".item"); const id = item.dataset.id;
-      const open = !item.classList.contains("open");
-      item.classList.toggle("open", open);
-      head.setAttribute("aria-expanded", open);
-      open ? S.expanded.add(id) : S.expanded.delete(id);
+    handleItemClick(e);
+  });
+  bindLongPress(content);
+  bindDetents(L, sheet, $(".sheet-scroll", L), close);
+  setTimeout(() => $(".close", L).focus({ preventScroll: true }), 60);
+}
+
+let todoSheet = null;
+function openTodo() {
+  if (todoSheet) return;
+  const L = makeLayer("todo");
+  L.innerHTML = `<div class="backdrop"></div>
+    <div class="sheet day-sheet" role="dialog" aria-modal="true" aria-labelledby="todoTitle">
+      <button class="grabber" aria-label="Expand to full screen"></button>
+      <div class="sheet-top">
+        <div><h2 id="todoTitle">To do list</h2><p id="todoSub"></p></div>
+        <button class="close" aria-label="Close">${I.x}</button>
+      </div>
+      <div class="sheet-scroll"><div class="todo-content"></div></div>
+    </div>`;
+  const sheet = $(".sheet", L), content = $(".todo-content", L);
+  let showDone = false;
+
+  const update = () => {
+    const tk = todayKey();
+    const open = S.items.filter(i => !i.done);
+    const byCreated = (a, b) => (a.createdAt || 0) - (b.createdAt || 0);
+    const byDue = (a, b) => (a.due || "").localeCompare(b.due || "") || byCreated(a, b);
+    const dated = open.filter(i => i.type !== "todo");
+    const overdue = dated.filter(i => i.due < tk).sort(byDue);
+    const upcoming = dated.filter(i => i.due >= tk).sort(byDue);
+    const todos = [2, 1, 0].map(l => open.filter(i => i.type === "todo" && urgencyOf(i) === l).sort(byCreated));
+    const finished = S.items.filter(i => i.done).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const group = (title, list, cls = "") => list.length ? `<h3 class="group-h ${cls}">${title}</h3><div class="list">${list.map(i => itemHtml(i, null)).join("")}</div>` : "";
+
+    $("#todoSub").textContent = open.length ? `${open.length} ${open.length === 1 ? "thing" : "things"} left` : "Nothing left";
+    let h = "";
+    if (!open.length) h += `<div class="empty">${I.checkCircle.replace("<svg", '<svg style="color:var(--green)"')}<h3>All caught up</h3><p>Add a to-do for anything that has no due date.</p></div>`;
+    else {
+      h += group("Overdue", overdue, "g-urgent");
+      h += group("High urgency", todos[0]) + group("Medium urgency", todos[1]) + group("Low urgency", todos[2]);
+      h += group("Coming up", upcoming);
+      h += `<p class="hint">Touch and hold an item to edit or delete it.</p>`;
     }
+    if (finished.length) {
+      h += `<button class="done-toggle" data-toggle-done aria-expanded="${showDone}">${I.chev}Completed (${finished.length})</button>`;
+      if (showDone) h += `<div class="list">${finished.map(i => itemHtml(i, null)).join("")}</div>`;
+    }
+    h += `<div class="sheet-actions one"><button class="big-btn filled" data-add="todo">Add to-do</button></div>`;
+    content.innerHTML = h;
+    hydrate(content);
+  };
+  update();
+
+  const close = () => { todoSheet = null; L.close(); };
+  L.onEscape = close;
+  todoSheet = { update, close };
+  L.addEventListener("click", e => {
+    if (e.target.classList.contains("backdrop") || e.target.closest(".close")) return close();
+    if (e.target.closest("[data-add]")) return openForm("todo", null, null);
+    if (e.target.closest("[data-toggle-done]")) { showDone = !showDone; update(); return; }
+    handleItemClick(e);
   });
   bindLongPress(content);
   bindDetents(L, sheet, $(".sheet-scroll", L), close);
@@ -889,7 +1011,7 @@ function openMenu(head) {
   if (!it || document.querySelector(".ctx")) return;
   const r = head.getBoundingClientRect();
   const L = makeLayer("ctx");
-  const type = it.type === "task" ? "task" : "event";
+  const type = typeName(it);
   L.innerHTML = `<div class="backdrop"></div><div class="lift"></div>
     <div class="menu" role="menu" aria-label="${esc(it.title)}">
       <button role="menuitem" data-m="edit">Edit ${type}${I.pencil}</button>
@@ -921,7 +1043,7 @@ function openMenu(head) {
 }
 
 async function confirmDelete(it) {
-  const type = it.type === "task" ? "task" : "event";
+  const type = typeName(it);
   const n = (it.attachments || []).length;
   const ok = await actionSheet({
     title: `Delete “${it.title}”?`,
@@ -950,12 +1072,16 @@ async function openViewer(a) {
 function openForm(type, existing, presetDate) {
   const isEdit = !!existing;
   const tk = todayKey();
-  const f = existing ? JSON.parse(JSON.stringify(existing)) : {
-    id: newId(), type, title: "", color: type === "task" ? "#FF9500" : "#5856D6",
+  const isTodo = type === "todo", tName = typeName({ type });
+  const f = existing ? JSON.parse(JSON.stringify(existing)) : Object.assign({
+    id: newId(), type, title: "", color: DEFAULT_COLOR[type],
     description: "", instructions: "", assigned: presetDate && presetDate < tk ? presetDate : tk,
-    due: presetDate || tk, attachments: [], done: false, createdAt: Date.now()
-  };
+    attachments: [], done: false, createdAt: Date.now()
+  }, isTodo ? { urgency: 0, rise: true, urgencyStart: Date.now() } : { due: presetDate || tk });
   f.attachments ||= [];
+  if (existing && isTodo) f.urgency = urgencyOf(existing);   // show the level it has reached
+  let urgTouched = false;
+  const dateKeys = isTodo ? ["assigned"] : ["assigned", "due"];
   const original = JSON.stringify(f);
   const added = [];     // uploaded during this edit (cleaned up on discard)
   const removed = [];   // removed during this edit (deleted on save)
@@ -966,7 +1092,7 @@ function openForm(type, existing, presetDate) {
     <div class="sheet page" role="dialog" aria-modal="true" aria-labelledby="formTitle">
       <header class="nav">
         <button class="nav-btn" data-a="cancel">Cancel</button>
-        <h2 id="formTitle">${isEdit ? "Edit" : "New"} ${type}</h2>
+        <h2 id="formTitle">${isEdit ? "Edit" : "New"} ${tName}</h2>
         <button class="nav-btn strong" data-a="save" disabled>${isEdit ? "Save" : "Add"}</button>
       </header>
       <div class="sheet-scroll">
@@ -975,17 +1101,24 @@ function openForm(type, existing, presetDate) {
           <div class="cell colors" role="radiogroup" aria-label="Color">${COLORS.map(([n, c]) =>
             `<button class="swatch" role="radio" aria-label="${n}" aria-checked="${c === f.color}" data-color="${c}" style="--c:${c}"></button>`).join("")}</div>
         </div>
+        ${isTodo ? `<h3 class="group-h">Urgency</h3>
+        <div class="group">
+          <div class="cell"><div class="seg" role="radiogroup" aria-label="Urgency">${URG.map((u, i) =>
+            `<button role="radio" aria-checked="${i === f.urgency}" data-urg="${i}">${u.name}</button>`).join("")}</div></div>
+          <div class="cell kv-row"><span id="lblRise">Rise over time</span><button class="switch" role="switch" aria-checked="${f.rise !== false}" aria-labelledby="lblRise" data-rise></button></div>
+        </div>
+        <p class="group-foot" id="riseNote"></p>` : ""}
         <h3 class="group-h">Dates</h3>
         <div class="group">
           <div class="cell kv-row"><span id="lblAssigned">Assigned</span><button class="date-btn" data-dbtn="assigned" aria-expanded="false" aria-describedby="lblAssigned"></button></div>
           <div class="dp" data-dp="assigned"><div class="dp-inner"></div></div>
-          <div class="cell kv-row"><span id="lblDue">Due</span><button class="date-btn" data-dbtn="due" aria-expanded="false" aria-describedby="lblDue"></button></div>
-          <div class="dp" data-dp="due"><div class="dp-inner"></div></div>
+          ${isTodo ? "" : `<div class="cell kv-row"><span id="lblDue">Due</span><button class="date-btn" data-dbtn="due" aria-expanded="false" aria-describedby="lblDue"></button></div>
+          <div class="dp" data-dp="due"><div class="dp-inner"></div></div>`}
         </div>
         <p class="group-foot warn" id="dateWarn" hidden>The due date is before the assigned date.</p>
         <h3 class="group-h">Description</h3>
-        <div class="group"><div class="cell"><textarea data-f="description" rows="3" aria-label="Description" placeholder="${type === "task" ? "What's this task about?" : "What's happening?"}"></textarea></div></div>
-        ${type === "task" ? `<h3 class="group-h">Instructions</h3>
+        <div class="group"><div class="cell"><textarea data-f="description" rows="3" aria-label="Description" placeholder="${isTodo ? "What needs doing?" : type === "task" ? "What's this task about?" : "What's happening?"}"></textarea></div></div>
+        ${type === "task" || isTodo ? `<h3 class="group-h">Instructions</h3>
         <div class="group"><div class="cell"><textarea data-f="instructions" rows="4" aria-label="Instructions" placeholder="Steps, page numbers, or what your teacher said"></textarea></div></div>` : ""}
         <h3 class="group-h">Attachments</h3>
         <div class="group">
@@ -1012,7 +1145,7 @@ function openForm(type, existing, presetDate) {
   const dpView = {};
   let dpOpen = null;
   function dateLabels() {
-    for (const k of ["assigned", "due"]) {
+    for (const k of dateKeys) {
       const b = q(`[data-dbtn=${k}]`);
       b.textContent = f[k] ? fmt(f[k], { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "Choose date";
       b.classList.toggle("active", dpOpen === k);
@@ -1040,17 +1173,22 @@ function openForm(type, existing, presetDate) {
   }
   function togglePicker(k) {
     dpOpen = dpOpen === k ? null : k;
-    for (const key of ["assigned", "due"]) {
+    for (const key of dateKeys) {
       if (dpOpen === key) { delete dpView[key]; renderPicker(key); }
       q(`[data-dp=${key}]`).classList.toggle("open", dpOpen === key);
     }
     dateLabels();
   }
   dateLabels();
+  function riseText() {
+    const n = q("#riseNote"); if (!n) return;
+    n.textContent = f.rise === false ? "Stays at the level you choose." : `Goes up one level every ${RISE_DAYS} days, until it reaches High.`;
+  }
+  riseText();
 
   function validate() {
     q("#dateWarn").hidden = !(f.assigned && f.due && f.due < f.assigned);
-    saveBtn.disabled = !f.title.trim() || !f.due || pending > 0;
+    saveBtn.disabled = !f.title.trim() || (!isTodo && !f.due) || pending > 0;
   }
 
   function renderAtts() {
@@ -1106,7 +1244,7 @@ function openForm(type, existing, presetDate) {
   async function cancel() {
     if (pending) { toast("Wait for uploads to finish.", true); return; }
     if (JSON.stringify(f) !== original) {
-      const ok = await actionSheet({ title: isEdit ? "Discard your changes?" : `Discard this ${type}?`, action: "Discard changes" });
+      const ok = await actionSheet({ title: isEdit ? "Discard your changes?" : `Discard this ${tName}?`, action: "Discard changes" });
       if (!ok) return;
     }
     added.forEach(a => store.dropFile(a));
@@ -1117,14 +1255,18 @@ function openForm(type, existing, presetDate) {
     if (saveBtn.disabled) return;
     f.title = f.title.trim();
     f.updatedAt = Date.now();
+    if (isTodo) {
+      if (isEdit && !urgTouched) { f.urgency = existing.urgency; f.rise = existing.rise; f.urgencyStart = existing.urgencyStart; }
+      else f.urgencyStart = Date.now();                      // the clock restarts from the level you picked
+    }
     saveBtn.disabled = true;
     try {
       await store.put(f);
       removed.forEach(a => store.dropFile(a));
       L.close();
-      toast(`${cap(type)} ${isEdit ? "saved" : "added"}`);
+      toast(`${cap(tName)} ${isEdit ? "saved" : "added"}`);
       if (!isEdit && daySheet && daySheet.key !== f.due) { /* keep sheet; item will show under its due day */ }
-      if (!isEdit && !daySheet) { const d = fromKey(f.due); if (d.getFullYear() !== S.y || d.getMonth() !== S.m) { S.y = d.getFullYear(); S.m = d.getMonth(); renderCalendar(); } }
+      if (!isEdit && !daySheet && f.due) { const d = fromKey(f.due); if (d.getFullYear() !== S.y || d.getMonth() !== S.m) { S.y = d.getFullYear(); S.m = d.getMonth(); renderCalendar(); } }
     } catch { validate(); }
   }
 
@@ -1146,6 +1288,10 @@ function openForm(type, existing, presetDate) {
       setTimeout(() => togglePicker(k), reduced ? 0 : 160);
       validate(); return;
     }
+    const ug = e.target.closest("[data-urg]");
+    if (ug) { f.urgency = Number(ug.dataset.urg); urgTouched = true; L.querySelectorAll("[data-urg]").forEach(b => b.setAttribute("aria-checked", b === ug)); return; }
+    const rs = e.target.closest("[data-rise]");
+    if (rs) { f.rise = !(f.rise !== false); urgTouched = true; rs.setAttribute("aria-checked", f.rise); riseText(); return; }
     const sw = e.target.closest("[data-color]");
     if (sw) { f.color = sw.dataset.color; L.querySelectorAll(".swatch").forEach(s => s.setAttribute("aria-checked", s === sw)); return; }
     const rm = e.target.closest("[data-rm]");
@@ -1179,6 +1325,7 @@ $("#todayLine").textContent = new Date().toLocaleDateString(LOC, { weekday: "lon
 $("#prevBtn").onclick = () => shiftMonth(-1);
 $("#nextBtn").onclick = () => shiftMonth(1);
 $("#todayBtn").onclick = () => { const n = new Date(); shiftMonth((n.getFullYear() - S.y) * 12 + n.getMonth() - S.m); };
+$("#todoBtn").onclick = openTodo;
 document.querySelector(".actions").addEventListener("click", e => { const b = e.target.closest("[data-add]"); if (b) openForm(b.dataset.add, null, null); });
 
 // Tap a day. Swipe the calendar left or right to change month; the grid follows your finger.
