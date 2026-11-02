@@ -56,11 +56,8 @@ input,textarea{font:inherit;color:inherit}
 .icon-btn svg{width:20px;height:20px}
 .pill{font-size:15px;font-weight:600;color:var(--tint);background:color-mix(in srgb,var(--tint) 14%,transparent);padding:6px 12px;border-radius:999px;margin-right:4px}
 .wk{display:grid;grid-template-columns:repeat(7,1fr);font-size:11px;font-weight:600;color:var(--label2);text-align:center;padding-bottom:4px}
-.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:.5px solid var(--sep)}
-.grid.slide-l{animation:slideL .32s var(--spring)}
-.grid.slide-r{animation:slideR .32s var(--spring)}
-@keyframes slideL{from{transform:translateX(24px);opacity:.2}to{transform:none;opacity:1}}
-@keyframes slideR{from{transform:translateX(-24px);opacity:.2}to{transform:none;opacity:1}}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:.5px solid var(--sep);will-change:transform}
+.cal{-webkit-user-select:none;user-select:none}
 .day{display:flex;flex-direction:column;align-items:stretch;gap:2px;min-height:clamp(62px,15vw,92px);padding:4px 2px 4px;border-bottom:.5px solid var(--sep);text-align:left;position:relative;transition:background .15s}
 .day:active{background:var(--fill)}
 .day:nth-last-child(-n+7){border-bottom:0}
@@ -93,9 +90,12 @@ input,textarea{font:inherit;color:inherit}
 .sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:600px;background:var(--sheet);border-radius:14px 14px 0 0;display:flex;flex-direction:column;
   transform:translateY(105%);transition:transform .5s var(--spring);box-shadow:0 -4px 30px rgba(0,0,0,.12);will-change:transform}
 .layer.in .sheet{transform:none}
-.sheet.day-sheet{max-height:calc(100% - var(--st) - 44px);min-height:min(52vh,460px)}
+.sheet.day-sheet{height:62%;transition:transform .5s var(--spring),height .45s var(--spring)}
+.sheet.day-sheet.large{border-radius:12px 12px 0 0}
 .sheet.page{top:calc(var(--st) + 12px)}
-.grabber{width:36px;height:5px;border-radius:3px;background:var(--label3);margin:6px auto 0;flex:none}
+.grabber{display:block;width:60px;height:20px;margin:0 auto -6px;flex:none;position:relative;touch-action:none;cursor:grab}
+.grabber::before{content:"";position:absolute;left:12px;right:12px;top:6px;height:5px;border-radius:3px;background:var(--label3)}
+.sa-probe{position:fixed;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px)}
 .sheet-top{padding:4px 16px 8px calc(16px + var(--sl));display:flex;align-items:flex-start;gap:12px;flex:none;touch-action:none;cursor:grab}
 .sheet-top h2{margin:0;font-family:var(--display);font-size:28px;line-height:34px;font-weight:700;letter-spacing:.01em}
 .sheet-top p{margin:0;font-size:15px;color:var(--label2);font-weight:500}
@@ -115,14 +115,33 @@ input,textarea{font:inherit;color:inherit}
 .group-foot{font-size:13px;color:var(--label2);margin:7px 16px 0}
 .group-foot.warn{color:var(--red)}
 .cell{display:flex;align-items:center;min-height:46px;padding:0 16px;position:relative;gap:12px}
-.cell + .cell::before,.att-list > .cell::before,.att-list:not(:empty) + .cell::before{content:"";position:absolute;top:0;right:0;left:16px;border-top:.5px solid var(--sep)}
+.cell + .cell::before,.dp + .cell::before,.att-list > .cell::before,.att-list:not(:empty) + .cell::before{content:"";position:absolute;top:0;right:0;left:16px;border-top:.5px solid var(--sep)}
 .att-list > .cell:first-child::before{display:none}
 .cell input[type=text],.cell input[type=url],.cell input:not([type]),.cell textarea{flex:1;border:0;background:none;outline:none;padding:12px 0;min-width:0}
 .cell input::placeholder,.cell textarea::placeholder{color:var(--label3)}
 .cell textarea{resize:none;line-height:1.35;min-height:84px}
 .title-in{font-size:20px;font-weight:600}
 .kv-row{justify-content:space-between;cursor:pointer}
-.kv-row input[type=date]{border:0;background:var(--fill);border-radius:7px;padding:6px 10px;font-size:16px;color:var(--label);font-variant-numeric:tabular-nums;min-width:0}
+.kv-row{cursor:default}
+.date-btn{background:var(--fill);border-radius:7px;padding:6px 11px;font-size:16px;color:var(--label);font-variant-numeric:tabular-nums;transition:color .2s}
+.date-btn.active{color:var(--tint)}
+.dp{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s var(--spring)}
+.dp.open{grid-template-rows:1fr}
+.dp-inner{overflow:hidden;min-height:0;padding:0 12px}
+.dp.open .dp-inner{padding-bottom:10px}
+.dp-head{display:flex;align-items:center;gap:2px;padding:4px 0 6px 4px}
+.dp-title{flex:1;font-size:17px;font-weight:600}
+.dp-wk,.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.dp-wk{font-size:13px;font-weight:600;color:var(--label3);padding-bottom:2px}
+.dp-day{height:42px;font-size:19px;font-variant-numeric:tabular-nums;display:grid;place-items:center;position:relative}
+.dp-day::before{content:"";position:absolute;width:40px;height:40px;border-radius:50%;z-index:-1;transition:background .2s,transform .2s var(--spring);transform:scale(.6)}
+.dp-day{z-index:0}
+.dp-day.today{color:var(--tint)}
+.dp-day.sel{color:var(--tint);font-weight:700}
+.dp-day.sel::before{background:color-mix(in srgb,var(--tint) 16%,transparent);transform:none}
+.dp-day.today.sel{color:#fff}
+.dp-day.today.sel::before{background:var(--tint)}
+.dp-day:active::before{background:var(--fill);transform:none}
 .colors{gap:0;justify-content:space-between;padding-top:10px;padding-bottom:10px;flex-wrap:wrap;row-gap:10px}
 .swatch{width:30px;height:30px;border-radius:50%;background:var(--c);position:relative;transition:transform .15s var(--spring)}
 .swatch[aria-checked=true]{box-shadow:0 0 0 2.5px var(--cell),0 0 0 4.5px var(--c);transform:scale(.88)}
@@ -273,13 +292,14 @@ input,textarea{font:inherit;color:inherit}
 "use strict";
 
 /* ===================== Utilities ===================== */
+const LOC = "en-US-u-ca-gregory-nu-latn"; // always Gregorian years (2026, not 2569)
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const pad = n => String(n).padStart(2, "0");
 const toKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fromKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
 const todayKey = () => toKey(new Date());
-const fmt = (k, o) => fromKey(k).toLocaleDateString("en-US", o);
+const fmt = (k, o) => fromKey(k).toLocaleDateString(LOC, o);
 const short = k => k ? fmt(k, { weekday: "short", month: "short", day: "numeric" }) : "Not set";
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -490,7 +510,7 @@ function renderCalendar(dir) {
   const tk = todayKey();
   const maxChips = innerWidth >= 520 ? 3 : 2;
 
-  $("#monthLabel").innerHTML = `${esc(first.toLocaleDateString("en-US", { month: "long" }))} <span>${y}</span>`;
+  $("#monthLabel").innerHTML = `${esc(first.toLocaleDateString(LOC, { month: "long" }))} <span>${y}</span>`;
   const now = new Date();
   $("#todayBtn").hidden = (now.getFullYear() === y && now.getMonth() === m);
 
@@ -506,7 +526,7 @@ function renderCalendar(dir) {
     if (d.getDay() === 0 || d.getDay() === 6) cls.push("weekend");
     const shown = list.slice(0, maxChips);
     const extra = list.length - shown.length;
-    const label = `${d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}, ${list.length ? list.length + (list.length === 1 ? " item" : " items") : "nothing due"}`;
+    const label = `${d.toLocaleDateString(LOC, { weekday: "long", month: "long", day: "numeric" })}, ${list.length ? list.length + (list.length === 1 ? " item" : " items") : "nothing due"}`;
     html += `<button class="${cls.join(" ")}" data-date="${k}" aria-label="${esc(label)}">
       <span class="num">${d.getDate()}</span>
       ${shown.map(it => `<span class="chip ${it.type}${it.done ? " done" : ""}" style="--c:${esc(it.color)}">${esc(it.title)}</span>`).join("")}
@@ -515,13 +535,35 @@ function renderCalendar(dir) {
   }
   const g = $("#grid");
   g.innerHTML = html;
-  if (dir && !reduced) { g.classList.remove("slide-l", "slide-r"); void g.offsetWidth; g.classList.add(dir > 0 ? "slide-l" : "slide-r"); }
 }
 
-function shiftMonth(n) {
-  const d = new Date(S.y, S.m + n, 1);
-  S.y = d.getFullYear(); S.m = d.getMonth();
-  renderCalendar(n);
+/* Slide the month grid out and the new month in. `from` is where a swipe left the grid (px). */
+let monthAnimating = false;
+function shiftMonth(n, from = 0) {
+  if (!n || monthAnimating) return;
+  const g = $("#grid");
+  const go = () => { const d = new Date(S.y, S.m + n, 1); S.y = d.getFullYear(); S.m = d.getMonth(); renderCalendar(); };
+  if (reduced) { g.style.transform = ""; g.style.opacity = ""; go(); return; }
+  monthAnimating = true;
+  const w = g.offsetWidth;
+  const out = n > 0 ? -w : w;
+  g.style.transition = "none";
+  g.style.transform = `translateX(${from}px)`;
+  void g.offsetWidth;
+  const dur = Math.max(120, 240 * (1 - Math.abs(from) / w));
+  g.style.transition = `transform ${dur}ms cubic-bezier(.4,0,1,1), opacity ${dur}ms`;
+  g.style.transform = `translateX(${out}px)`;
+  g.style.opacity = "0";
+  setTimeout(() => {
+    go();
+    g.style.transition = "none";
+    g.style.transform = `translateX(${-out * 0.6}px)`;
+    void g.offsetWidth;
+    g.style.transition = "transform .45s var(--spring), opacity .3s ease";
+    g.style.transform = "";
+    g.style.opacity = "";
+    setTimeout(() => { monthAnimating = false; }, 120);
+  }, dur);
 }
 
 function refresh() {
@@ -655,7 +697,7 @@ function openDay(key) {
   const L = makeLayer("day");
   L.innerHTML = `<div class="backdrop"></div>
     <div class="sheet day-sheet" role="dialog" aria-modal="true" aria-labelledby="dayTitle">
-      <div class="grabber"></div>
+      <button class="grabber" aria-label="Expand to full screen"></button>
       <div class="sheet-top">
         <div><h2 id="dayTitle">${esc(fmt(key, { weekday: "long" }))}</h2><p>${esc(fmt(key, { month: "long", day: "numeric", year: "numeric" }))}</p></div>
         <button class="close" aria-label="Close">${I.x}</button>
@@ -706,28 +748,108 @@ function openDay(key) {
     }
   });
   bindLongPress(content);
-  bindDrag(L, sheet, $(".sheet-top", L), close);
+  bindDetents(L, sheet, $(".sheet-scroll", L), close);
   setTimeout(() => $(".close", L).focus({ preventScroll: true }), 60);
 }
 
 const findItem = id => S.items.find(x => x.id === id);
 
-/* Drag the sheet header down to dismiss */
-function bindDrag(L, sheet, handle, close) {
-  let y0 = null, dy = 0;
-  const grab = $(".grabber", L);
-  [handle, grab].forEach(h => h && h.addEventListener("pointerdown", e => {
-    if (e.target.closest("button")) return;
-    y0 = e.clientY; dy = 0; sheet.style.transition = "none";
-    h.setPointerCapture(e.pointerId);
-  }));
-  const move = e => { if (y0 == null) return; dy = Math.max(0, e.clientY - y0); sheet.style.transform = `translateY(${dy}px)`; };
-  const up = () => {
-    if (y0 == null) return;
-    y0 = null; sheet.style.transition = ""; sheet.style.transform = "";
-    if (dy > 110) close();
+/* Day sheet detents: half height and full height, like an iOS sheet.
+   Swipe up to expand, swipe down to shrink, swipe down again to close. */
+let safeTop = null;
+function getSafeTop() {
+  if (safeTop != null) return safeTop;
+  const p = document.createElement("div"); p.className = "sa-probe"; document.body.appendChild(p);
+  safeTop = parseFloat(getComputedStyle(p).paddingTop) || 0; p.remove();
+  return safeTop;
+}
+function bindDetents(L, sheet, scroller, close) {
+  const grab = $(".grabber", L), top = $(".sheet-top", L);
+  let large = false, mediumH = 0, largeH = 0;
+  const measure = () => {
+    const vh = L.clientHeight;
+    largeH = vh - getSafeTop() - 10;
+    mediumH = Math.min(Math.round(vh * 0.62), largeH);
   };
-  [handle, grab].forEach(h => { if (!h) return; h.addEventListener("pointermove", move); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", up); });
+  const setDetent = (isLarge) => {
+    large = isLarge;
+    sheet.classList.toggle("large", large);
+    sheet.style.height = (large ? largeH : mediumH) + "px";
+    grab.setAttribute("aria-label", large ? "Shrink to half screen" : "Expand to full screen");
+  };
+  measure(); setDetent(false);
+  const onResize = () => { if (!L.isConnected) return removeEventListener("resize", onResize); measure(); setDetent(large); };
+  addEventListener("resize", onResize);
+
+  let y0 = null, h0 = 0, claimed = false, fromHandle = false, samples = [], dragged = false;
+  const begin = (y, handle) => { y0 = y; h0 = sheet.offsetHeight; claimed = false; dragged = false; fromHandle = handle; samples = [[y, performance.now()]]; };
+  const apply = h => {
+    if (h > largeH) h = largeH + (h - largeH) * 0.15;              // rubber band past full height
+    if (h >= mediumH) { sheet.style.height = h + "px"; sheet.style.transform = "none"; }
+    else { sheet.style.height = mediumH + "px"; sheet.style.transform = `translateY(${mediumH - h}px)`; }
+  };
+  const track = (y, e) => {
+    if (y0 == null) return;
+    const dy = y - y0;
+    if (!claimed) {
+      if (Math.abs(dy) < 6) return;
+      // Half height: any vertical drag moves the sheet. Full height: only a pull-down
+      // from the top of the list (or the handle) does; otherwise the list scrolls.
+      if (fromHandle || !large || (dy > 0 && scroller.scrollTop <= 0)) { claimed = true; dragged = true; sheet.style.transition = "none"; }
+      else { y0 = null; return; }
+    }
+    if (e && e.cancelable) e.preventDefault();
+    samples.push([y, performance.now()]); if (samples.length > 6) samples.shift();
+    apply(h0 - dy);
+  };
+  // Decide where the sheet ends up after a drag
+  const settle = (dyTotal) => {
+    const [ya, ta] = samples[0], [yb, tb] = samples[samples.length - 1];
+    const v = (yb - ya) / Math.max(1, tb - ta);
+    const h = h0 - dyTotal;
+    const startedLarge = large;
+    sheet.style.transition = "";
+    sheet.style.transform = "";
+    let target;
+    if (v < -0.4) target = "large";
+    else if (v > 0.4) target = startedLarge && h > mediumH * 0.8 ? "medium" : "close";
+    else if (h > (mediumH + largeH) / 2) target = "large";
+    else if (h < mediumH * 0.72) target = "close";
+    else target = "medium";
+    if (target === "close") { sheet.style.height = mediumH + "px"; close(); }
+    else setDetent(target === "large");
+    if (navigator.vibrate && target !== (startedLarge ? "large" : "medium")) try { navigator.vibrate(8); } catch {}
+  };
+  let yStart = 0;
+  const end = (y) => {
+    if (y0 == null) return;
+    const wasClaimed = claimed; const dyTotal = y - yStart; y0 = null;
+    if (wasClaimed) settle(dyTotal);
+  };
+
+  // Touch
+  sheet.addEventListener("touchstart", e => {
+    if (e.touches.length !== 1) { y0 = null; return; }
+    const t = e.touches[0]; yStart = t.clientY;
+    begin(t.clientY, !!e.target.closest(".sheet-top, .grabber") && !e.target.closest(".close"));
+  }, { passive: true });
+  sheet.addEventListener("touchmove", e => { if (e.touches.length === 1) track(e.touches[0].clientY, e); }, { passive: false });
+  sheet.addEventListener("touchend", e => end(e.changedTouches[0] ? e.changedTouches[0].clientY : yStart));
+  sheet.addEventListener("touchcancel", () => { if (claimed) { y0 = null; sheet.style.transition = ""; sheet.style.transform = ""; setDetent(large); } });
+  // Mouse: drag the handle or header
+  [grab, top].forEach(h => h.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "mouse" || e.button !== 0 || e.target.closest(".close")) return;
+    yStart = e.clientY; begin(e.clientY, true);
+  }));
+  const pm = e => { if (e.pointerType === "mouse") track(e.clientY, e); };
+  const pu = e => { if (e.pointerType === "mouse") end(e.clientY); };
+  addEventListener("pointermove", pm); addEventListener("pointerup", pu);
+  // Tap the handle to switch between half and full height
+  grab.addEventListener("click", () => { if (dragged) { dragged = false; return; } setDetent(!large); });
+  // Scrolling the list with a wheel/trackpad while at half height expands it first
+  scroller.addEventListener("wheel", e => { if (!large && e.deltaY > 4) setDetent(true); }, { passive: true });
+  const origRemove = L.close;
+  L.close = cb => { removeEventListener("pointermove", pm); removeEventListener("pointerup", pu); removeEventListener("resize", onResize); origRemove(cb); };
 }
 
 /* ===================== Long press → context menu ===================== */
@@ -855,8 +977,10 @@ function openForm(type, existing, presetDate) {
         </div>
         <h3 class="group-h">Dates</h3>
         <div class="group">
-          <label class="cell kv-row"><span>Assigned</span><input type="date" data-f="assigned"></label>
-          <label class="cell kv-row"><span>Due</span><input type="date" data-f="due"></label>
+          <div class="cell kv-row"><span id="lblAssigned">Assigned</span><button class="date-btn" data-dbtn="assigned" aria-expanded="false" aria-describedby="lblAssigned"></button></div>
+          <div class="dp" data-dp="assigned"><div class="dp-inner"></div></div>
+          <div class="cell kv-row"><span id="lblDue">Due</span><button class="date-btn" data-dbtn="due" aria-expanded="false" aria-describedby="lblDue"></button></div>
+          <div class="dp" data-dp="due"><div class="dp-inner"></div></div>
         </div>
         <p class="group-foot warn" id="dateWarn" hidden>The due date is before the assigned date.</p>
         <h3 class="group-h">Description</h3>
@@ -883,6 +1007,46 @@ function openForm(type, existing, presetDate) {
     el.value = f[k] || "";
     el.addEventListener("input", () => { f[k] = el.value; validate(); });
   }
+
+  /* Inline date picker (Gregorian, independent of the device's calendar setting) */
+  const dpView = {};
+  let dpOpen = null;
+  function dateLabels() {
+    for (const k of ["assigned", "due"]) {
+      const b = q(`[data-dbtn=${k}]`);
+      b.textContent = f[k] ? fmt(f[k], { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "Choose date";
+      b.classList.toggle("active", dpOpen === k);
+      b.setAttribute("aria-expanded", dpOpen === k);
+    }
+  }
+  function renderPicker(k) {
+    const box = q(`[data-dp=${k}] .dp-inner`);
+    const base = f[k] ? fromKey(f[k]) : new Date();
+    const v = dpView[k] ||= { y: base.getFullYear(), m: base.getMonth() };
+    const first = new Date(v.y, v.m, 1);
+    const days = new Date(v.y, v.m + 1, 0).getDate();
+    const tk = todayKey();
+    let cells = "";
+    for (let i = 0; i < first.getDay(); i++) cells += "<span></span>";
+    for (let d = 1; d <= days; d++) {
+      const key = `${v.y}-${pad(v.m + 1)}-${pad(d)}`;
+      cells += `<button class="dp-day${key === f[k] ? " sel" : ""}${key === tk ? " today" : ""}" data-dday="${key}" aria-label="${esc(fmt(key, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}"${key === f[k] ? ' aria-current="date"' : ""}>${d}</button>`;
+    }
+    box.innerHTML = `<div class="dp-head"><span class="dp-title">${esc(first.toLocaleDateString(LOC, { month: "long" }))} ${v.y}</span>
+      <button class="icon-btn" data-dnav="-1" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="icon-btn" data-dnav="1" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button></div>
+      <div class="dp-wk" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+      <div class="dp-grid">${cells}</div>`;
+  }
+  function togglePicker(k) {
+    dpOpen = dpOpen === k ? null : k;
+    for (const key of ["assigned", "due"]) {
+      if (dpOpen === key) { delete dpView[key]; renderPicker(key); }
+      q(`[data-dp=${key}]`).classList.toggle("open", dpOpen === key);
+    }
+    dateLabels();
+  }
+  dateLabels();
 
   function validate() {
     q("#dateWarn").hidden = !(f.assigned && f.due && f.due < f.assigned);
@@ -967,6 +1131,21 @@ function openForm(type, existing, presetDate) {
   L.onEscape = cancel;
   L.addEventListener("click", e => {
     if (e.target.classList.contains("backdrop")) return cancel();
+    const db = e.target.closest("[data-dbtn]");
+    if (db) return togglePicker(db.dataset.dbtn);
+    const dn = e.target.closest("[data-dnav]");
+    if (dn) {
+      const k = dn.closest("[data-dp]").dataset.dp, v = dpView[k];
+      const d = new Date(v.y, v.m + Number(dn.dataset.dnav), 1);
+      v.y = d.getFullYear(); v.m = d.getMonth(); renderPicker(k); return;
+    }
+    const dd = e.target.closest("[data-dday]");
+    if (dd) {
+      const k = dd.closest("[data-dp]").dataset.dp;
+      f[k] = dd.dataset.dday; renderPicker(k);
+      setTimeout(() => togglePicker(k), reduced ? 0 : 160);
+      validate(); return;
+    }
     const sw = e.target.closest("[data-color]");
     if (sw) { f.color = sw.dataset.color; L.querySelectorAll(".swatch").forEach(s => s.setAttribute("aria-checked", s === sw)); return; }
     const rm = e.target.closest("[data-rm]");
@@ -996,21 +1175,58 @@ function openForm(type, existing, presetDate) {
 }
 
 /* ===================== Home wiring ===================== */
-$("#todayLine").textContent = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+$("#todayLine").textContent = new Date().toLocaleDateString(LOC, { weekday: "long", month: "long", day: "numeric" });
 $("#prevBtn").onclick = () => shiftMonth(-1);
 $("#nextBtn").onclick = () => shiftMonth(1);
-$("#todayBtn").onclick = () => { const n = new Date(); const dir = (n.getFullYear() - S.y) * 12 + n.getMonth() - S.m; S.y = n.getFullYear(); S.m = n.getMonth(); renderCalendar(Math.sign(dir)); };
+$("#todayBtn").onclick = () => { const n = new Date(); shiftMonth((n.getFullYear() - S.y) * 12 + n.getMonth() - S.m); };
 document.querySelector(".actions").addEventListener("click", e => { const b = e.target.closest("[data-add]"); if (b) openForm(b.dataset.add, null, null); });
 
-// Tap a day; swipe the calendar sideways to change month
+// Tap a day. Swipe the calendar left or right to change month; the grid follows your finger.
 (() => {
-  const g = $("#grid"); let x0 = null, y0 = 0, swiped = false;
-  const cal = $(".cal");
-  cal.addEventListener("pointerdown", e => { x0 = e.clientX; y0 = e.clientY; swiped = false; });
-  cal.addEventListener("pointerup", e => {
-    if (x0 == null) return;
-    const dx = e.clientX - x0, dy = e.clientY - y0; x0 = null;
-    if (Math.abs(dx) > 56 && Math.abs(dy) < 44) { swiped = true; shiftMonth(dx < 0 ? 1 : -1); }
+  const g = $("#grid"), cal = $(".cal");
+  let sx = null, sy = 0, dx = 0, axis = null, t0 = 0, swiped = false;
+  const start = (x, y) => { if (monthAnimating) return; sx = x; sy = y; dx = 0; axis = null; t0 = performance.now(); swiped = false; };
+  const move = (x, y, e) => {
+    if (sx == null) return;
+    const mx = x - sx, my = y - sy;
+    if (!axis) {
+      if (Math.hypot(mx, my) < 8) return;
+      axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+      if (axis === "x") g.style.transition = "none";
+    }
+    if (axis !== "x") return;
+    if (e.cancelable) e.preventDefault();
+    dx = mx;
+    g.style.transform = `translateX(${dx}px)`;
+    g.style.opacity = String(1 - Math.min(Math.abs(dx) / (g.offsetWidth * 1.4), 0.5));
+  };
+  const end = () => {
+    if (sx == null) return;
+    sx = null;
+    if (axis !== "x") return;
+    swiped = true;
+    const w = g.offsetWidth, v = Math.abs(dx) / Math.max(1, performance.now() - t0);
+    if (Math.abs(dx) > w * 0.2 || (v > 0.4 && Math.abs(dx) > 24)) {
+      if (navigator.vibrate) try { navigator.vibrate(8); } catch {}
+      shiftMonth(dx < 0 ? 1 : -1, dx);
+    } else {
+      g.style.transition = "transform .4s var(--spring), opacity .3s";
+      g.style.transform = ""; g.style.opacity = "";
+    }
+  };
+  // Touch (phones, tablets)
+  cal.addEventListener("touchstart", e => { if (e.touches.length === 1) start(e.touches[0].clientX, e.touches[0].clientY); else sx = null; }, { passive: true });
+  cal.addEventListener("touchmove", e => { if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false });
+  cal.addEventListener("touchend", end);
+  cal.addEventListener("touchcancel", end);
+  // Mouse / trackpad drag (computers)
+  cal.addEventListener("pointerdown", e => { if (e.pointerType === "mouse" && e.button === 0) start(e.clientX, e.clientY); });
+  addEventListener("pointermove", e => { if (e.pointerType === "mouse") move(e.clientX, e.clientY, e); });
+  addEventListener("pointerup", e => { if (e.pointerType === "mouse") end(); });
+  // Arrow keys also change month when the calendar has focus
+  cal.addEventListener("keydown", e => {
+    if (e.key === "PageUp") { e.preventDefault(); shiftMonth(-1); }
+    if (e.key === "PageDown") { e.preventDefault(); shiftMonth(1); }
   });
   g.addEventListener("click", e => {
     if (swiped) { swiped = false; return; }
