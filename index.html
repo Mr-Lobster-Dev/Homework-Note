@@ -67,10 +67,12 @@ input,textarea{font:inherit;color:inherit}
 .day.weekend:not(.other) .num{color:var(--label2)}
 .day.today .num{background:var(--tint);color:#fff;font-weight:700}
 .day.sel:not(.today) .num{background:var(--label);color:var(--bg);font-weight:700}
-.chip{--c:var(--tint);display:block;font-size:10.5px;line-height:15px;font-weight:600;padding:0 4px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:clip;
+.chip{--c:var(--tint);display:flex;align-items:center;gap:2px;font-size:10.5px;line-height:15px;font-weight:600;padding:0 3px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:clip;
   background:color-mix(in srgb,var(--c) 22%,transparent);color:color-mix(in srgb,var(--c) 62%,var(--label));
-  -webkit-mask-image:linear-gradient(90deg,#000 80%,transparent);mask-image:linear-gradient(90deg,#000 80%,transparent)}
-.chip.task::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;border:1.3px solid currentColor;margin-right:3px;vertical-align:1px}
+  }
+.chip .t{flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,#000 80%,transparent);mask-image:linear-gradient(90deg,#000 80%,transparent)}
+.chip .d{flex:none;font-size:9.5px;font-weight:800;font-variant-numeric:tabular-nums;background:color-mix(in srgb,var(--c) 30%,transparent);border-radius:3px;padding:0 3px;line-height:13px}
+.chip.task::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;border:1.3px solid currentColor;margin-right:1px;flex:none}
 .chip.done{text-decoration:line-through;opacity:.55}
 .chip.done::before{background:currentColor}
 .more{font-size:10px;font-weight:600;color:var(--label2);padding-left:4px;line-height:13px}
@@ -714,7 +716,7 @@ function renderCalendar(dir) {
     const label = `${d.toLocaleDateString(LOC, { weekday: "long", month: "long", day: "numeric" })}, ${list.length ? list.length + (list.length === 1 ? " item" : " items") : "nothing due"}`;
     html += `<button class="${cls.join(" ")}" data-date="${k}" aria-label="${esc(label)}">
       <span class="num">${d.getDate()}</span>
-      ${shown.map(it => `<span class="chip ${it.type}${it.done ? " done" : ""}" style="--c:${esc(it.color)}">${esc(it.title)}</span>`).join("")}
+      ${shown.map(it => `<span class="chip ${it.type}${it.done ? " done" : ""}" style="--c:${esc(it.color)}"><span class="t">${esc(it.title)}</span>${it.difficulty != null && it.type !== "event" ? `<span class="d" title="Difficulty ${it.difficulty}">${it.difficulty}</span>` : ""}</span>`).join("")}
       ${extra > 0 ? `<span class="more">+${extra} more</span>` : ""}
     </button>`;
   }
@@ -892,7 +894,7 @@ function itemHtml(it, dayKey) {
       ${I.chev}
     </button>
     <div class="item-body"><div class="item-inner"><div class="detail">
-      <dl class="kv"><div><dt>Assigned</dt><dd>${esc(short(it.assigned))}</dd></div>${it.type === "todo" ? `<div><dt>Urgency</dt><dd>${URG[urgencyOf(it)].name}</dd></div>` : `<div><dt>Due</dt><dd>${esc(short(it.due))}</dd></div>`}${it.type === "event" ? "" : `<div><dt>Difficulty</dt><dd>${it.difficulty != null ? it.difficulty + " / 10" : "Not set"}</dd></div><div><dt>Work</dt><dd>${it.team ? "Team" : "Solo"}</dd></div>`}</dl>
+      <dl class="kv"><div><dt>Assigned</dt><dd>${esc(short(it.assigned))}</dd></div>${it.type === "todo" ? `<div><dt>Urgency</dt><dd>${URG[urgencyOf(it)].name}</dd></div>` : `<div><dt>Due</dt><dd>${esc(short(it.due))}</dd></div>`}${it.type === "event" ? "" : `<div><dt>Difficulty</dt><dd>${it.difficulty != null ? it.difficulty : "Not set"}</dd></div><div><dt>Work</dt><dd>${it.team ? "Team" : "Solo"}</dd></div>`}</dl>
       ${it.team && (it.members || "").trim() ? `<section class="d-block"><h4>Team members</h4><p>${esc(it.members.trim())}</p></section>` : ""}
       ${it.type === "todo" && !it.done && riseNote(it) ? `<p class="rise-note">${esc(riseNote(it))}</p>` : ""}
       <section class="d-block"><h4>Description</h4>${desc ? `<p>${esc(desc)}</p>` : `<p class="d-empty">No description</p>`}</section>
@@ -1318,7 +1320,7 @@ function openForm(type, existing, presetDate) {
     const sl = q("[data-diff]"), out = q("#diffVal");
     const paint = () => {
       sl.style.setProperty("--p", ((sl.value - 1) / 9 * 100) + "%");
-      out.textContent = f.difficulty != null ? `${f.difficulty} / 10` : "Not set";
+      out.textContent = f.difficulty != null ? String(f.difficulty) : "Not set";
       out.classList.toggle("unset", f.difficulty == null);
     };
     sl.value = f.difficulty != null ? f.difficulty : 5;
