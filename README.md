@@ -23,6 +23,10 @@ By default everything is saved in your browser (localStorage for items, IndexedD
 
 **Sign in with Google to sync.** Once you've followed [SETUP.md](SETUP.md) (about 10 minutes, free), the person icon at the top right signs you in with Google, and your events, tasks and to-dos follow you to every device. Photos, videos and PDFs stay on the device where you added them; links sync.
 
+## iPad app and widget
+
+The `ios/` folder builds a real iPad and iPhone app with a Home Screen widget. See [ios/README.md](ios/README.md). It needs a Mac with Xcode.
+
 ## Running locally
 
 It's a single file with no build step. Open `index.html` in a browser, or serve the folder:
