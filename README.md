@@ -2,7 +2,7 @@
 
 A simple homework planner with a calendar home screen, styled after Apple's Human Interface Guidelines.
 
-**Live app:** https://mr-lobster-dev.github.io/homework-note/
+**Live app:** https://mr-lobster-dev.github.io/Homework-Note/
 
 ## Features
 
