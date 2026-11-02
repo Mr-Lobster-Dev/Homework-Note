@@ -234,6 +234,18 @@ input,textarea{font:inherit;color:inherit}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.28);transition:transform .3s var(--spring)}
 .switch[aria-checked=true]{background:var(--green)}
 .switch[aria-checked=true]::after{transform:translateX(20px)}
+.slider{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:44px;margin:0;background:transparent;cursor:pointer;--p:44%}
+.slider::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--tint) var(--p),var(--fill2) var(--p))}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2),0 2px 6px rgba(0,0,0,.28);margin-top:-12px}
+.slider::-moz-range-track{height:4px;border-radius:2px;background:var(--fill2)}
+.slider::-moz-range-progress{height:4px;border-radius:2px;background:var(--tint)}
+.slider::-moz-range-thumb{width:28px;height:28px;border:0;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2),0 2px 6px rgba(0,0,0,.28)}
+.diff-val{min-width:4.5ch;text-align:right;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--tint)}
+.diff-val.unset{color:var(--label3);font-weight:400}
+.team-panel .dp-inner{padding:0 16px}
+.team-panel.open .dp-inner{border-top:.5px solid var(--sep);padding-top:10px;padding-bottom:12px}
+.members{width:100%;display:block;border:0;outline:0;resize:none;background:var(--fill);border-radius:10px;padding:10px 12px;line-height:1.35;font-size:16px}
+.members::placeholder{color:var(--label3)}
 .rise-note{font-size:13px;color:var(--label2);margin:0}
 .done-toggle{display:flex;align-items:center;gap:6px;margin:22px 16px 7px;font-size:13px;color:var(--label2)}
 .done-toggle .chev{width:12px;height:12px;transition:transform .3s var(--spring)}
@@ -880,7 +892,8 @@ function itemHtml(it, dayKey) {
       ${I.chev}
     </button>
     <div class="item-body"><div class="item-inner"><div class="detail">
-      <dl class="kv"><div><dt>Assigned</dt><dd>${esc(short(it.assigned))}</dd></div>${it.type === "todo" ? `<div><dt>Urgency</dt><dd>${URG[urgencyOf(it)].name}</dd></div>` : `<div><dt>Due</dt><dd>${esc(short(it.due))}</dd></div>`}</dl>
+      <dl class="kv"><div><dt>Assigned</dt><dd>${esc(short(it.assigned))}</dd></div>${it.type === "todo" ? `<div><dt>Urgency</dt><dd>${URG[urgencyOf(it)].name}</dd></div>` : `<div><dt>Due</dt><dd>${esc(short(it.due))}</dd></div>`}${it.type === "event" ? "" : `<div><dt>Difficulty</dt><dd>${it.difficulty != null ? it.difficulty + " / 10" : "Not set"}</dd></div><div><dt>Work</dt><dd>${it.team ? "Team" : "Solo"}</dd></div>`}</dl>
+      ${it.team && (it.members || "").trim() ? `<section class="d-block"><h4>Team members</h4><p>${esc(it.members.trim())}</p></section>` : ""}
       ${it.type === "todo" && !it.done && riseNote(it) ? `<p class="rise-note">${esc(riseNote(it))}</p>` : ""}
       <section class="d-block"><h4>Description</h4>${desc ? `<p>${esc(desc)}</p>` : `<p class="d-empty">No description</p>`}</section>
       ${it.type === "task" || it.type === "todo" ? `<section class="d-block"><h4>Instructions</h4>${ins ? `<p>${esc(ins)}</p>` : `<p class="d-empty">No instructions</p>`}</section>` : ""}
@@ -1219,12 +1232,12 @@ async function openViewer(a) {
 function openForm(type, existing, presetDate) {
   const isEdit = !!existing;
   const tk = todayKey();
-  const isTodo = type === "todo", tName = typeName({ type });
+  const isTodo = type === "todo", hasWork = type !== "event", tName = typeName({ type });
   const f = existing ? JSON.parse(JSON.stringify(existing)) : Object.assign({
     id: newId(), type, title: "", color: DEFAULT_COLOR[type],
     description: "", instructions: "", assigned: presetDate && presetDate < tk ? presetDate : tk,
     attachments: [], done: false, createdAt: Date.now()
-  }, isTodo ? { urgency: 0, rise: true, urgencyStart: Date.now() } : { due: presetDate || tk });
+  }, isTodo ? { urgency: 0, rise: true, urgencyStart: Date.now() } : { due: presetDate || tk }, hasWork ? { difficulty: 5, team: false, members: "" } : {});
   f.attachments ||= [];
   if (existing && isTodo) f.urgency = urgencyOf(existing);   // show the level it has reached
   let urgTouched = false;
@@ -1263,6 +1276,19 @@ function openForm(type, existing, presetDate) {
           <div class="dp" data-dp="due"><div class="dp-inner"></div></div>`}
         </div>
         <p class="group-foot warn" id="dateWarn" hidden>The due date is before the assigned date.</p>
+        ${hasWork ? `<h3 class="group-h">Difficulty</h3>
+        <div class="group"><div class="cell">
+          <input type="range" class="slider" min="1" max="10" step="1" data-diff aria-label="Difficulty, 1 is easy and 10 is very hard">
+          <output class="diff-val" id="diffVal" for="diff"></output></div></div>
+        <p class="group-foot">1 is easy, 10 is very hard.</p>
+        <h3 class="group-h">Work</h3>
+        <div class="group">
+          <div class="cell"><div class="seg" role="radiogroup" aria-label="Work type">
+            <button role="radio" aria-checked="${!f.team}" data-team="0">Solo</button>
+            <button role="radio" aria-checked="${!!f.team}" data-team="1">Team</button></div></div>
+          <div class="dp team-panel${f.team ? " open" : ""}" data-team-panel><div class="dp-inner">
+            <textarea class="members" data-f="members" rows="2" aria-label="Team members" placeholder="Names, separated by commas"></textarea></div></div>
+        </div>` : ""}
         <h3 class="group-h">Description</h3>
         <div class="group"><div class="cell"><textarea data-f="description" rows="3" aria-label="Description" placeholder="${isTodo ? "What needs doing?" : type === "task" ? "What's this task about?" : "What's happening?"}"></textarea></div></div>
         ${type === "task" || isTodo ? `<h3 class="group-h">Instructions</h3>
@@ -1281,11 +1307,23 @@ function openForm(type, existing, presetDate) {
 
   const q = s => $(s, L);
   const saveBtn = q("[data-a=save]");
-  for (const k of ["title", "assigned", "due", "description", "instructions"]) {
+  for (const k of ["title", "assigned", "due", "description", "instructions", "members"]) {
     const el = q(`[data-f=${k}]`);
     if (!el) continue;
     el.value = f[k] || "";
     el.addEventListener("input", () => { f[k] = el.value; validate(); });
+  }
+
+  if (hasWork) {
+    const sl = q("[data-diff]"), out = q("#diffVal");
+    const paint = () => {
+      sl.style.setProperty("--p", ((sl.value - 1) / 9 * 100) + "%");
+      out.textContent = f.difficulty != null ? `${f.difficulty} / 10` : "Not set";
+      out.classList.toggle("unset", f.difficulty == null);
+    };
+    sl.value = f.difficulty != null ? f.difficulty : 5;
+    sl.addEventListener("input", () => { f.difficulty = Number(sl.value); paint(); validate(); });
+    paint();
   }
 
   /* Inline date picker (Gregorian, independent of the device's calendar setting) */
@@ -1434,6 +1472,14 @@ function openForm(type, existing, presetDate) {
       f[k] = dd.dataset.dday; renderPicker(k);
       setTimeout(() => togglePicker(k), reduced ? 0 : 160);
       validate(); return;
+    }
+    const tm = e.target.closest("[data-team]");
+    if (tm) {
+      f.team = tm.dataset.team === "1";
+      L.querySelectorAll("[data-team]").forEach(b => b.setAttribute("aria-checked", b === tm));
+      q("[data-team-panel]").classList.toggle("open", f.team);
+      if (f.team) setTimeout(() => q("[data-f=members]").focus({ preventScroll: true }), 380);
+      return;
     }
     const ug = e.target.closest("[data-urg]");
     if (ug) { f.urgency = Number(ug.dataset.urg); urgTouched = true; L.querySelectorAll("[data-urg]").forEach(b => b.setAttribute("aria-checked", b === ug)); return; }

@@ -12,6 +12,7 @@ A simple homework planner with a calendar home screen, styled after Apple's Huma
 - **To do list:** everything not yet marked done, grouped as Overdue, High, Medium and Low urgency, and Coming up
 - **To-dos:** like a task, but with no due date. They have an urgency level (Low, Medium or High) that rises one level every 3 days until it reaches High, unless you turn that off
 - Events and tasks can both be marked as done
+- Tasks and to-dos have a difficulty slider (1 to 10) and a Solo or Team setting, with one box for team member names
 - Tap a day to see everything due or assigned that day; tap an item to expand its details
 - Touch and hold (or right-click) an item to edit or delete it
 - Light and dark mode
